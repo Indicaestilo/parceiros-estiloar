@@ -1355,7 +1355,9 @@ async function inicializarPortal(){
     }
 
     // Carregar peças
+    console.log('Carregando peças do banco...');
     const kps=await dbCarregarKitsPeca();
+    console.log('Peças carregadas:', kps);
     if(kps&&kps.length>0){
       kitsPeca=kps.map(function(k){
         return {nm:k.nome,de:k.preco_de||'',por:k.preco_por||'',id:k.id,
