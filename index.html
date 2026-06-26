@@ -402,6 +402,18 @@ table.pa tr:hover td{background:var(--cinza)}
 .video-glow-wrap{position:relative;border-radius:12px;padding:3px;background:linear-gradient(270deg,#29ABE2,#0D2257,#29ABE2,#1565C0,#29ABE2);background-size:400% 400%;animation:glowRotate 3s ease infinite;box-shadow:0 0 12px 3px rgba(41,171,226,.5);overflow:hidden}
 .video-glow-wrap::before{content:'';position:absolute;inset:0;border-radius:12px;animation:glowPulse 2s ease-in-out infinite;pointer-events:none;z-index:1}
 .video-glow-inner{border-radius:10px;overflow:hidden;position:relative;z-index:0}
+.docs-lista{display:flex;flex-direction:column;gap:10px}
+.doc-item{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:14px}
+.doc-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.doc-icon.pdf{background:#FEE2E2}
+.doc-icon.xls{background:#D1FAE5}
+.doc-icon.doc{background:#DBEAFE}
+.doc-icon.other{background:#F3F4F6}
+.doc-info{flex:1}
+.doc-nm{font-size:14px;font-weight:600;color:var(--txt)}
+.doc-desc{font-size:12px;color:var(--txt2);margin-top:2px}
+.doc-btn{background:var(--azul);color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.doc-btn:hover{background:var(--azul2)}
 .toast{position:fixed;bottom:48px;right:24px;background:#1A2340;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
 .toast.show{transform:translateY(0);opacity:1}
 </style>
@@ -611,23 +623,11 @@ Como Parceiro Autorizado, sua empresa passa a fazer parte de um ecossistema que 
         <div id="render-servicos"></div>
       </div>
 
-      <!-- Ficha de garantia -->
+      <!-- Documentos para Download -->
       <div class="secao">
-        <div class="stit">Ficha de garantia</div>
-        <div id="garantia-download-area">
-          <div style="background:#fff;border:1px solid var(--borda);border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px">
-            <div style="width:48px;height:48px;border-radius:12px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#DC2626"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
-            </div>
-            <div style="flex:1">
-              <div style="font-size:14px;font-weight:600;color:var(--txt);margin-bottom:3px">Ficha de Garantia Estilo AR</div>
-              <div style="font-size:12px;color:var(--txt2)" id="garantia-info">Clique no botão para baixar o arquivo</div>
-            </div>
-            <a id="garantia-btn" href="#" download style="background:var(--azul);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Baixar ficha
-            </a>
-          </div>
+        <div class="stit">Documentos para download</div>
+        <div class="docs-lista" id="docs-lista-view">
+          <div style="font-size:13px;color:var(--txt2);padding:16px 0">Nenhum documento disponível ainda.</div>
         </div>
       </div>
 
@@ -719,20 +719,10 @@ Como Parceiro Autorizado, sua empresa passa a fazer parte de um ecossistema que 
 
       <!-- Upload ficha de garantia -->
       <div class="texto-admin-card">
-        <div class="ta-label">📄 Ficha de garantia — Upload do arquivo</div>
-        <div id="garantia-upload-preview" style="margin-bottom:10px;display:none">
-          <div style="display:flex;align-items:center;gap:10px;background:var(--cinza);border-radius:8px;padding:10px 14px">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#DC2626"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
-            <span id="garantia-filename" style="font-size:13px;color:var(--txt);font-weight:500"></span>
-            <span style="font-size:11px;color:var(--verde);margin-left:auto">✅ Arquivo carregado</span>
-          </div>
-        </div>
-        <label style="display:flex;align-items:center;gap:8px;background:var(--cinza);border:1.5px dashed var(--borda);border-radius:8px;padding:14px 18px;cursor:pointer;font-size:13px;color:var(--txt2)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Clique para fazer upload da ficha de garantia (PDF)
-          <input type="file" accept="application/pdf" style="display:none" onchange="uploadGarantia(this)">
-        </label>
-        <div class="campo-hint">Após o upload, o botão "Baixar ficha" na área do parceiro ficará disponível automaticamente.</div>
+        <div class="ta-label">📁 Documentos para download</div>
+        <div class="campo-hint" style="margin-bottom:12px">Adicione arquivos que os parceiros poderão baixar. Aceita PDF, Excel, Word e outros formatos.</div>
+        <div id="docs-adm-lista" style="margin-bottom:14px"></div>
+        <button class="btn g" onclick="abrirMo('mo-add-doc')">+ Adicionar documento</button>
       </div>
     </div>
 
@@ -1121,6 +1111,29 @@ Participação em treinamentos, lives técnicas e atualizações constantes.</te
   <div class="modal-acs"><button class="btn-can" onclick="fecharMo()">Cancelar</button><button class="btn g" onclick="salvarEditServico()">Salvar</button></div>
 </div></div>
 
+<div class="mo" id="mo-add-doc"><div class="modal">
+  <h3>Adicionar documento</h3>
+  <p class="modal-sub">O arquivo será disponibilizado para download pelos parceiros.</p>
+  <div class="campo"><label>Nome do documento</label><input id="doc-nm" placeholder="Ex: Ficha de Garantia, Manual Técnico..."></div>
+  <div class="campo"><label>Descrição (opcional)</label><input id="doc-desc" placeholder="Ex: Versão 2024, atualizado em Jan/2024"></div>
+  <div class="campo">
+    <label>Arquivo</label>
+    <div id="doc-file-preview" style="display:none;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--cinza);border-radius:7px;padding:9px 12px">
+        <span id="doc-file-name" style="font-size:13px;color:var(--txt);font-weight:500"></span>
+        <span style="font-size:11px;color:var(--verde);margin-left:auto">✅ Pronto</span>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;background:var(--cinza);border:1.5px dashed var(--borda);border-radius:8px;padding:12px 16px;cursor:pointer;font-size:13px;color:var(--txt2)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Selecionar arquivo
+      <input type="file" id="doc-file-input" style="display:none" onchange="previewDocFile(this)">
+    </label>
+    <div class="campo-hint">PDF, Excel, Word ou qualquer outro formato.</div>
+  </div>
+  <div class="modal-acs"><button class="btn-can" onclick="fecharMo()">Cancelar</button><button class="btn g" onclick="addDoc()">Adicionar</button></div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <!-- TELA CRIAR SENHA (para parceiros que receberam convite) -->
@@ -1385,6 +1398,15 @@ async function inicializarPortal(){
       console.log('Módulos carregados do Supabase:',mods.length);
     }
 
+    // Carregar documentos
+    if(configs['docs_download']){
+      try{
+        docsDownload=JSON.parse(configs['docs_download']);
+        renderDocsView();
+        renderDocsAdm();
+      }catch(e){console.error('Erro ao carregar docs:',e);}
+    }
+
     console.log('Portal inicializado com Supabase');
   }catch(e){
     console.error('Erro ao inicializar:',e);
@@ -1588,7 +1610,7 @@ function abaAdm(id,el){
   if(el)el.classList.add('at');
   if(id==='pecas-adm')renderKitsPecaAdm();
   if(id==='textos'){renderKvAdm();}
-  if(id==='servicos-adm')renderServicosAdm();
+  if(id==='servicos-adm'){renderServicosAdm();renderDocsAdm();}
 }
 
 function atualizarStats(){ /* stats removidos do hero */ }
@@ -2625,6 +2647,73 @@ function salvarEditServico(){
   if(!nm||!vl)return;
   servicos[i]={cod,nm,vl:'R$ '+vl};
   renderServicosAdm();fecharMo();t('✅ Serviço atualizado!');
+}
+
+// ── DOCUMENTOS PARA DOWNLOAD ────────────────────────────────────────────────
+let docFileBase64='';
+let docFileType='';
+
+function previewDocFile(input){
+  const f=input.files[0];if(!f)return;
+  docFileType=f.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  reader.onload=function(e){
+    docFileBase64=e.target.result;
+    document.getElementById('doc-file-name').textContent=f.name;
+    document.getElementById('doc-file-preview').style.display='block';
+  };
+  reader.readAsDataURL(f);
+}
+
+function getDocIcon(ext){
+  if(['pdf'].includes(ext))return{icon:'📄',cls:'pdf'};
+  if(['xls','xlsx','csv'].includes(ext))return{icon:'📊',cls:'xls'};
+  if(['doc','docx'].includes(ext))return{icon:'📝',cls:'doc'};
+  return{icon:'📁',cls:'other'};
+}
+
+function addDoc(){
+  const nm=document.getElementById('doc-nm').value.trim();
+  const desc=document.getElementById('doc-desc').value.trim();
+  if(!nm||!docFileBase64){t('⚠️ Preencha o nome e selecione um arquivo.');return;}
+  const fileName=document.getElementById('doc-file-name').textContent;
+  docsDownload.push({nm,desc,file:docFileBase64,ext:docFileType,fileName});
+  renderDocsAdm();renderDocsView();fecharMo();
+  t('✅ Documento "'+nm+'" adicionado!');
+  document.getElementById('doc-nm').value='';
+  document.getElementById('doc-desc').value='';
+  document.getElementById('doc-file-preview').style.display='none';
+  document.getElementById('doc-file-input').value='';
+  docFileBase64='';docFileType='';
+  // Save to Supabase configs
+  dbUpsertConfig('docs_download', JSON.stringify(docsDownload));
+}
+
+function remDoc(i){
+  if(confirm('Remover "'+docsDownload[i].nm+'"?')){
+    docsDownload.splice(i,1);
+    renderDocsAdm();renderDocsView();
+    dbUpsertConfig('docs_download', JSON.stringify(docsDownload));
+    t('Documento removido.');
+  }
+}
+
+function renderDocsAdm(){
+  const el=document.getElementById('docs-adm-lista');if(!el)return;
+  if(docsDownload.length===0){el.innerHTML='<div style="font-size:13px;color:var(--txt2)">Nenhum documento adicionado ainda.</div>';return;}
+  el.innerHTML=docsDownload.map(function(d,i){
+    const{icon,cls}=getDocIcon(d.ext);
+    return '<div class="doc-item"><div class="doc-icon '+cls+'">'+icon+'</div><div class="doc-info"><div class="doc-nm">'+d.nm+'</div><div class="doc-desc">'+(d.desc||d.fileName)+'</div></div><button class="ba-btn d" onclick="remDoc('+i+')" title="Remover"><svg viewBox="0 0 24 24" fill="none" stroke="#6B7A99" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></div>';
+  }).join('');
+}
+
+function renderDocsView(){
+  const el=document.getElementById('docs-lista-view');if(!el)return;
+  if(docsDownload.length===0){el.innerHTML='<div style="font-size:13px;color:var(--txt2);padding:16px 0">Nenhum documento disponível ainda.</div>';return;}
+  el.innerHTML=docsDownload.map(function(d,i){
+    const{icon,cls}=getDocIcon(d.ext);
+    return '<div class="doc-item"><div class="doc-icon '+cls+'">'+icon+'</div><div class="doc-info"><div class="doc-nm">'+d.nm+'</div><div class="doc-desc">'+(d.desc||'')+'</div></div><a href="'+d.file+'" download="'+d.fileName+'" class="doc-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar</a></div>';
+  }).join('');
 }
 
 function uploadGarantia(input){
