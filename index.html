@@ -1651,7 +1651,7 @@ function abrirMod(mi){
     document.getElementById('area-player').insertBefore(fotoArea,document.getElementById('area-player').firstChild);
   }
   if(m.fotos&&m.fotos.length>0){
-    const slides=m.fotos.map(f=>`<div class="kit-carousel-slide"><img src="${f}" alt="${m.nm}"></div>`).join('');
+    const slides=m.fotos.map(f=>`<div class="kit-carousel-slide"><img src="${f}" alt="${m.nm}" style="object-fit:contain;padding:8px;background:#fff"></div>`).join('');
     const dots=m.fotos.map((_,i)=>`<div class="kit-dot${i===0?' at':''}" onclick="carouselNavMod(${i})"></div>`).join('');
     const navs=m.fotos.length>1?`<button class="kit-nav prev" onclick="carouselNavMod(-1,true)">&#8249;</button><button class="kit-nav next" onclick="carouselNavMod(1,true)">&#8250;</button>`:'';
     fotoArea.innerHTML=`<div class="secao"><div class="stit">Fotos do produto</div><div style="background:#fff;border:1px solid var(--borda);border-radius:12px;overflow:hidden;height:220px;position:relative"><div id="mod-car" data-cur="0">${navs}<div class="kit-carousel" id="mod-car-inner">${slides}</div><div class="kit-dots">${dots}</div></div></div></div>`;
@@ -2016,28 +2016,62 @@ function addFotosMod(mi,input){
   if(!mods[mi].fotos)mods[mi].fotos=[];
   const files=[...input.files];
   let loaded=0;
-  files.forEach(f=>{
+  files.forEach(function(f){
     const reader=new FileReader();
-    reader.onload=e=>{
+    reader.onload=function(e){
       mods[mi].fotos.push(e.target.result);
       loaded++;
-      if(loaded===files.length){renderModsAdm();t('✅ '+files.length+' foto(s) adicionada(s)!');}
+      if(loaded===files.length){
+        renderModsAdm();
+        t('✅ '+files.length+' foto(s) adicionada(s)!');
+        // Save fotos to Supabase
+        const modId=mods[mi].id;
+        if(modId){
+          // Save each new foto
+          mods[mi].fotos.forEach(function(fotoB64,fi){
+            sbFetch('fotos_modulo','POST',{modulo_id:modId,foto_base64:fotoB64,ordem:fi});
+          });
+        }
+      }
     };
     reader.readAsDataURL(f);
   });
 }
 function remFotoMod(mi,fi){
-  mods[mi].fotos.splice(fi,1);renderModsAdm();t('Foto removida.');
+  // Get foto ID from DB - need to reload
+  const modId=mods[mi].id;
+  mods[mi].fotos.splice(fi,1);
+  renderModsAdm();t('Foto removida.');
+  // Reload fotos from DB and resync
+  if(modId){
+    sbFetch('fotos_modulo?modulo_id=eq.'+modId,'DELETE');
+    // Re-insert remaining fotos
+    mods[mi].fotos.forEach(function(fotoB64,idx){
+      sbFetch('fotos_modulo','POST',{modulo_id:modId,foto_base64:fotoB64,ordem:idx});
+    });
+  }
 }
 
 function addPdfMod(mi,input){
   const f=input.files[0];if(!f)return;
-  const url=URL.createObjectURL(f);
-  mods[mi].pdf={nm:f.name,url};
-  renderModsAdm();t('✅ Manual "'+f.name+'" adicionado!');
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const b64=e.target.result;
+    mods[mi].pdf={nm:f.name,url:b64};
+    renderModsAdm();t('✅ Manual "'+f.name+'" adicionado!');
+    // Save to Supabase
+    const modId=mods[mi].id;
+    if(modId){
+      sbFetch('modulos?id=eq.'+modId,'PATCH',{pdf_nome:f.name,pdf_url:b64});
+    }
+  };
+  reader.readAsDataURL(f);
 }
 function remPdfMod(mi){
-  mods[mi].pdf={nm:'',url:''};renderModsAdm();t('Manual removido.');
+  mods[mi].pdf={nm:'',url:''};
+  renderModsAdm();t('Manual removido.');
+  const modId=mods[mi].id;
+  if(modId)sbFetch('modulos?id=eq.'+modId,'PATCH',{pdf_nome:null,pdf_url:null});
 }
 
 // AÇÕES LINHAS/KITS
