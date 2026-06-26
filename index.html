@@ -1364,6 +1364,7 @@ async function inicializarPortal(){
           })
         };
       });
+      console.log('KitsPeca carregados do DB:', kitsPeca.length, 'kits, primeiro kit id:', kitsPeca[0]?kitsPeca[0].id:'none');
     }
 
     // Carregar módulos do banco
@@ -2089,9 +2090,19 @@ function addPeca(){
 function remPeca(ki,pi){
   if(confirm('Remover peça "'+kitsPeca[ki].pecas[pi].nm+'"?')){
     const pecaId=kitsPeca[ki].pecas[pi].id;
+    const kitId=kitsPeca[ki].id;
+    console.log('remPeca - pecaId:', pecaId, 'kitId:', kitId);
     kitsPeca[ki].pecas.splice(pi,1);
     calcTotaisKit(ki);
-    if(pecaId)dbRemoverPecaDB(pecaId);
+    if(pecaId){
+      dbRemoverPecaDB(pecaId).then(function(r){
+        console.log('DB delete result:', r);
+        // Also update kit totals
+        if(kitId)sbFetch('kits_peca?id=eq.'+kitId,'PATCH',{preco_de:kitsPeca[ki].de,preco_por:kitsPeca[ki].por});
+      });
+    }else{
+      console.warn('Peça sem ID - não foi deletada do banco!');
+    }
     renderKitsPecaAdm();t('Peça removida.');
   }
 }
