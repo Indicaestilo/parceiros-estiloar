@@ -1719,19 +1719,17 @@ function irAdmin(){
 
 
 function aba(id,el){
-  // Stop all section videos before switching tab
-  ['sobre','beneficios','pecas','servicos'].forEach(function(sec){
-    const cont=document.getElementById('vp-cont-'+sec);
-    if(cont){const iframes=cont.querySelectorAll('iframe');iframes.forEach(function(f){f.src=f.src;});}
+  // Destroy ALL iframes to force stop all videos
+  document.querySelectorAll('#tela-portal iframe').forEach(function(f){
+    f.parentNode.removeChild(f);
   });
-  // Stop treinamentos player
+  // Also clear the module player
   const pc=document.getElementById('pl-cont');
-  if(pc)pc.innerHTML='';
-  // Stop curso player  
-  const cc=document.getElementById('curso-player-cont');
-  if(cc){const iframes=cc.querySelectorAll('iframe');iframes.forEach(function(f){const s=f.src;f.src='';f.src=s;});}
+  if(pc)pc.innerHTML='<div class="pv-ph"><div class="pbig"><svg viewBox="0 0 10 10"><polygon points="2,1 9,5 2,9"/></svg></div><div class="phint">Selecione um vídeo</div></div>';
 
-  ['sobre','beneficios','pecas','curso','treinamentos','servicos','suporte'].forEach(function(a){document.getElementById('aba-'+a).style.display=a===id?'block':'none';});
+  ['sobre','beneficios','pecas','curso','treinamentos','servicos','suporte'].forEach(function(a){
+    document.getElementById('aba-'+a).style.display=a===id?'block':'none';
+  });
   document.querySelectorAll('#tela-portal .nl').forEach(function(l){l.classList.remove('at');});
   if(el)el.classList.add('at');
   if(id==='pecas'){recalcularTodos();renderPecas();}
