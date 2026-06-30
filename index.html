@@ -468,6 +468,7 @@ table.pa tr:hover td{background:var(--cinza)}
       <span class="nl" onclick="aba('curso',this)">Curso</span>
       <span class="nl" onclick="aba('treinamentos',this)">Treinamentos</span>
       <span class="nl" onclick="aba('servicos',this)">Serviços</span>
+      <span class="nl" onclick="aba('marketing',this)">Materiais de Marketing</span>
       <span class="nl" onclick="aba('suporte',this)">Suporte</span>
       <span class="nl adm" id="btn-admin" onclick="irAdmin()" style="display:none">⚙ Admin</span>
     </div>
@@ -650,6 +651,15 @@ Como Parceiro Autorizado, sua empresa passa a fazer parte de um ecossistema que 
 
     </div>
 
+    <!-- ABA MATERIAIS DE MARKETING -->
+    <div id="aba-marketing" style="display:none">
+      <div class="secao">
+        <div class="stit">Materiais de marketing</div>
+        <div style="font-size:13px;color:var(--txt2);margin-bottom:18px">Acesse banners, vídeos promocionais, logos e outros materiais para divulgação. Os arquivos ficam hospedados no Google Drive — clique para abrir e baixar de lá.</div>
+        <div id="render-marketing"></div>
+      </div>
+    </div>
+
     <!-- ABA SUPORTE -->
     <div id="aba-suporte" style="display:none">
       <div class="stit">Suporte técnico</div>
@@ -676,6 +686,7 @@ Como Parceiro Autorizado, sua empresa passa a fazer parte de um ecossistema que 
 
       <span class="nl" onclick="abaAdm('pecas-adm',this)">Peças</span>
       <span class="nl" onclick="abaAdm('servicos-adm',this)">Serviços</span>
+      <span class="nl" onclick="abaAdm('marketing-adm',this)">Materiais de Marketing</span>
       <span class="nl" onclick="abaAdm('videos-adm',this)">🎬 Vídeos</span>
       <span class="nl" onclick="abaAdm('textos',this)">Textos</span>
     </div>
@@ -712,6 +723,15 @@ Como Parceiro Autorizado, sua empresa passa a fazer parte de um ecossistema que 
     <div id="adm-conteudo" style="display:none">
       <div class="ash"><div><div class="ati">Módulos e vídeos</div><div class="asu">Gerencie os treinamentos dos parceiros</div></div><button class="btn" onclick="abrirMo('mo-modulo')">+ Novo módulo</button></div>
       <div id="lista-mods"></div>
+    </div>
+
+    <!-- MATERIAIS DE MARKETING ADMIN -->
+    <div id="adm-marketing-adm" style="display:none">
+      <div class="ash">
+        <div><div class="ati">Materiais de Marketing</div><div class="asu">Organize por categoria links para o Google Drive (banners, vídeos, logos, etc)</div></div>
+        <button class="btn" onclick="abrirMo('mo-categoria-marketing')">+ Nova categoria</button>
+      </div>
+      <div id="lista-marketing-adm"></div>
     </div>
 
 
@@ -1190,6 +1210,19 @@ Participação em treinamentos, lives técnicas e atualizações constantes.</te
   <div class="modal-acs"><button class="btn-can" onclick="fecharMo()">Cancelar</button><button class="btn g" onclick="addDoc()">Adicionar</button></div>
 </div></div>
 
+<div class="mo" id="mo-categoria-marketing"><div class="modal">
+  <h3>Nova categoria</h3><p class="modal-sub">Ex: Banners, Vídeos promocionais, Logos...</p>
+  <div class="campo"><label>Nome da categoria</label><input id="mkt-cat-nm" placeholder="Ex: Banners para Instagram"></div>
+  <div class="modal-acs"><button class="btn-can" onclick="fecharMo()">Cancelar</button><button class="btn g" onclick="addCategoriaMarketing()">Criar categoria</button></div>
+</div></div>
+
+<div class="mo" id="mo-item-marketing"><div class="modal">
+  <h3>Adicionar material</h3><p class="modal-sub" id="mkt-item-sub">Adicionando à categoria.</p>
+  <div class="campo"><label>Nome do material</label><input id="mkt-item-nm" placeholder="Ex: Banner Instagram Feed"></div>
+  <div class="campo"><label>Link do Google Drive</label><input id="mkt-item-link" placeholder="https://drive.google.com/..."><div class="campo-hint">Cole o link de compartilhamento do Drive (pasta ou arquivo).</div></div>
+  <div class="modal-acs"><button class="btn-can" onclick="fecharMo()">Cancelar</button><button class="btn g" onclick="addItemMarketing()">Adicionar</button></div>
+</div></div>
+
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="fecharLightbox(event)">
   <button class="lightbox-close" onclick="fecharLightbox()">×</button>
@@ -1377,6 +1410,19 @@ async function dbAtualizarModulo(id,nm,cor){
 async function dbRemoverModulo(id){
   return sbFetch('modulos?id=eq.'+id,'DELETE');
 }
+// MATERIAIS DE MARKETING
+async function dbCarregarMateriaisMarketing(){
+  return sbFetch('materiais_marketing?select=*&order=ordem.asc');
+}
+async function dbSalvarItemMarketing(categoria,nome,link,ordem){
+  return sbFetch('materiais_marketing','POST',{categoria:categoria,nome:nome,link:link,ordem:ordem||0});
+}
+async function dbRemoverItemMarketing(id){
+  return sbFetch('materiais_marketing?id=eq.'+id,'DELETE');
+}
+async function dbRemoverCategoriaMarketing(categoria){
+  return sbFetch('materiais_marketing?categoria=eq.'+encodeURIComponent(categoria),'DELETE');
+}
 async function dbSalvarVideoModulo(moduloId,titulo,link,ordem){
   return sbFetch('videos','POST',{modulo_id:moduloId,titulo:titulo,link:link,ordem:ordem});
 }
@@ -1532,6 +1578,17 @@ async function inicializarPortal(){
       console.log('KitsPeca carregados do DB:', kitsPeca.length, 'kits, primeiro kit id:', kitsPeca[0]?kitsPeca[0].id:'none');
     }
 
+    // Carregar materiais de marketing (agrupados por categoria)
+    const mkts=await dbCarregarMateriaisMarketing();
+    if(mkts&&mkts.length>0){
+      const grupos={};
+      mkts.forEach(function(m){
+        if(!grupos[m.categoria])grupos[m.categoria]={categoria:m.categoria,itens:[],aberta:false};
+        grupos[m.categoria].itens.push({id:m.id,nome:m.nome,link:m.link});
+      });
+      marketingCategorias=Object.values(grupos);
+    }
+
     // Carregar módulos do banco (com capítulos e vídeos)
     const dbMods=await sbFetch('modulos?select=*,fotos_modulo(*),capitulos(*,videos(*))&order=ordem.asc');
     if(dbMods&&dbMods.length>0){
@@ -1630,6 +1687,8 @@ let garantiaUrl='';
 let docsDownload=[];
 let docFileBase64='';
 let docFileType='';
+let marketingCategorias=[]; // [{id, categoria, itens:[{id,nome,link}], aberta:false}]
+let marketingCatAtual=null;
 let kvItens=[
   {nm:'Banner', desc:'1 unidade · 70×100cm', foto:''}
 ];
@@ -1783,7 +1842,7 @@ function aba(id,el){
   const pc=document.getElementById('pl-cont');
   if(pc)pc.innerHTML='<div class="pv-ph"><div class="pbig"><svg viewBox="0 0 10 10"><polygon points="2,1 9,5 2,9"/></svg></div><div class="phint">Selecione um vídeo</div></div>';
 
-  ['sobre','beneficios','pecas','curso','treinamentos','servicos','suporte'].forEach(function(a){
+  ['sobre','beneficios','pecas','curso','treinamentos','servicos','marketing','suporte'].forEach(function(a){
     document.getElementById('aba-'+a).style.display=a===id?'block':'none';
   });
   document.querySelectorAll('#tela-portal .nl').forEach(function(l){l.classList.remove('at');});
@@ -1792,6 +1851,7 @@ function aba(id,el){
   if(id==='servicos')renderServicos();
   if(id==='beneficios')renderKvView();
   if(id==='treinamentos')renderMods();
+  if(id==='marketing')renderMarketingView();
 
   // Restore video for the tab being opened (without autoplay)
   if(['sobre','beneficios','pecas','servicos'].includes(id)&&vpState[id]){
@@ -1819,12 +1879,13 @@ function aba(id,el){
 }
 
 function abaAdm(id,el){
-  ['membros','conteudo','servicos-adm','pecas-adm','videos-adm','textos'].forEach(a=>document.getElementById('adm-'+a).style.display=a===id?'block':'none');
+  ['membros','conteudo','servicos-adm','pecas-adm','videos-adm','textos','marketing-adm'].forEach(a=>document.getElementById('adm-'+a).style.display=a===id?'block':'none');
   document.querySelectorAll('#tela-admin .nl').forEach(l=>l.classList.remove('at'));
   if(el)el.classList.add('at');
   if(id==='pecas-adm')renderKitsPecaAdm();
   if(id==='textos'){renderKvAdm();preencherCamposTextos();}
   if(id==='servicos-adm'){renderServicosAdm();renderDocsAdm();}
+  if(id==='marketing-adm')renderMarketingAdm();
 }
 
 function atualizarStats(){ /* stats removidos do hero */ }
@@ -1888,7 +1949,7 @@ function abrirMod(mi){
   let pdfArea=document.getElementById('mod-pdf-area');
   if(!pdfArea){pdfArea=document.createElement('div');pdfArea.id='mod-pdf-area';area.insertBefore(pdfArea,area.firstChild);}
   if(m.pdf&&m.pdf.nm){
-    pdfArea.innerHTML='<div class="secao"><div class="stit">Manual do produto</div><div style="display:flex;gap:10px;flex-wrap:wrap"><a href="'+m.pdf.url+'" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:11px 16px;text-decoration:none;color:var(--txt);font-size:13px;font-weight:500"><svg width="18" height="18" viewBox="0 0 24 24" fill="#DC2626"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>Abrir manual</a><a href="'+m.pdf.url+'" download="'+m.pdf.nm+'" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar</a></div></div>';
+    pdfArea.innerHTML='<div class="secao"><div class="stit">Manual do produto</div><div style="display:flex;gap:10px;flex-wrap:wrap"><a href="'+m.pdf.url+'" download="'+m.pdf.nm+'" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar manual</a></div></div>';
   }else{pdfArea.innerHTML='';}
 
   const vli=document.getElementById('vl-items');vli.innerHTML='';
@@ -3184,6 +3245,113 @@ function renderDocsView(){
   el.innerHTML=docsDownload.map(function(d,i){
     const{icon,cls}=getDocIcon(d.ext);
     return '<div class="doc-item"><div class="doc-icon '+cls+'">'+icon+'</div><div class="doc-info"><div class="doc-nm">'+d.nm+'</div><div class="doc-desc">'+(d.desc||'')+'</div></div><a href="'+d.file+'" download="'+d.fileName+'" class="doc-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar</a></div>';
+  }).join('');
+}
+
+// ── MATERIAIS DE MARKETING ───────────────────────────────────────────────────
+function abrirNovaCategoriaMarketing(){
+  document.getElementById('mkt-cat-nm').value='';
+  abrirMo('mo-categoria-marketing');
+}
+
+function addCategoriaMarketing(){
+  const nm=document.getElementById('mkt-cat-nm').value.trim();
+  if(!nm){t('❌ Digite o nome da categoria.');return;}
+  if(marketingCategorias.some(function(c){return c.categoria.toLowerCase()===nm.toLowerCase();})){
+    t('⚠️ Já existe uma categoria com esse nome.');return;
+  }
+  marketingCategorias.push({categoria:nm,itens:[],aberta:true});
+  renderMarketingAdm();fecharMo();
+  t('✅ Categoria "'+nm+'" criada! Adicione materiais a ela.');
+}
+
+function remCategoriaMarketing(ci){
+  const cat=marketingCategorias[ci];
+  if(!confirm('Excluir a categoria "'+cat.categoria+'" e todos os materiais dentro dela?'))return;
+  marketingCategorias.splice(ci,1);
+  renderMarketingAdm();renderMarketingView();
+  dbRemoverCategoriaMarketing(cat.categoria);
+  t('Categoria removida.');
+}
+
+function toggleCategoriaMarketing(ci){
+  marketingCategorias[ci].aberta=!marketingCategorias[ci].aberta;
+  renderMarketingAdm();
+}
+
+function abrirAddItemMarketing(ci){
+  marketingCatAtual=ci;
+  document.getElementById('mkt-item-sub').textContent='Categoria: '+marketingCategorias[ci].categoria;
+  document.getElementById('mkt-item-nm').value='';
+  document.getElementById('mkt-item-link').value='';
+  abrirMo('mo-item-marketing');
+}
+
+function addItemMarketing(){
+  const nm=document.getElementById('mkt-item-nm').value.trim();
+  const link=document.getElementById('mkt-item-link').value.trim();
+  if(!nm||!link){t('❌ Preencha nome e link.');return;}
+  if(marketingCatAtual===null)return;
+  const cat=marketingCategorias[marketingCatAtual];
+  cat.itens.push({nome:nm,link:link});
+  renderMarketingAdm();renderMarketingView();fecharMo();
+  t('✅ Material "'+nm+'" adicionado!');
+  dbSalvarItemMarketing(cat.categoria,nm,link,cat.itens.length-1).then(function(r){
+    if(r&&r[0]&&r[0].id)cat.itens[cat.itens.length-1].id=r[0].id;
+  });
+}
+
+function remItemMarketing(ci,ii){
+  const cat=marketingCategorias[ci];
+  const item=cat.itens[ii];
+  if(!confirm('Remover "'+item.nome+'"?'))return;
+  cat.itens.splice(ii,1);
+  renderMarketingAdm();renderMarketingView();
+  if(item.id)dbRemoverItemMarketing(item.id);
+  t('Material removido.');
+}
+
+function renderMarketingAdm(){
+  const el=document.getElementById('lista-marketing-adm');if(!el)return;
+  if(marketingCategorias.length===0){
+    el.innerHTML='<div style="font-size:13px;color:var(--txt2);padding:16px 0">Nenhuma categoria criada ainda. Clique em "+ Nova categoria".</div>';
+    return;
+  }
+  el.innerHTML=marketingCategorias.map(function(cat,ci){
+    const itensHTML=cat.itens.length===0
+      ? '<div style="font-size:12px;color:var(--txt2);padding:10px 0">Nenhum material nesta categoria ainda.</div>'
+      : cat.itens.map(function(item,ii){
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--borda)">'
+            +'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2" stroke-linecap="round" style="flex-shrink:0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+            +'<a href="'+item.link+'" target="_blank" style="font-size:13px;color:var(--txt);text-decoration:none;flex:1">'+item.nome+'</a>'
+            +'<button class="ba-btn d" onclick="remItemMarketing('+ci+','+ii+')" title="Remover"><svg viewBox="0 0 24 24" fill="none" stroke="#6B7A99" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>'
+            +'</div>';
+        }).join('');
+    return '<div class="card" style="margin-bottom:14px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:var(--cinza)" onclick="toggleCategoriaMarketing('+ci+')">'
+      +'<div style="display:flex;align-items:center;gap:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A2340" stroke-width="2" stroke-linecap="round" style="transform:rotate('+(cat.aberta?'90':'0')+'deg);transition:transform .15s"><polyline points="9 18 15 12 9 6"/></svg><strong style="font-size:14px;color:var(--txt)">'+cat.categoria+'</strong><span style="font-size:12px;color:var(--txt2)">('+cat.itens.length+')</span></div>'
+      +'<div style="display:flex;gap:8px" onclick="event.stopPropagation()"><button class="btn sm" onclick="abrirAddItemMarketing('+ci+')">+ Material</button><button class="ba-btn d" onclick="remCategoriaMarketing('+ci+')" title="Excluir categoria"><svg viewBox="0 0 24 24" fill="none" stroke="#6B7A99" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button></div>'
+      +'</div>'
+      +(cat.aberta?'<div style="padding:6px 18px 14px">'+itensHTML+'</div>':'')
+      +'</div>';
+  }).join('');
+}
+
+function renderMarketingView(){
+  const el=document.getElementById('render-marketing');if(!el)return;
+  if(marketingCategorias.length===0||marketingCategorias.every(function(c){return c.itens.length===0;})){
+    el.innerHTML='<div style="font-size:13px;color:var(--txt2);padding:16px 0">Nenhum material disponível ainda.</div>';
+    return;
+  }
+  el.innerHTML=marketingCategorias.filter(function(c){return c.itens.length>0;}).map(function(cat){
+    const itensHTML=cat.itens.map(function(item){
+      return '<a href="'+item.link+'" target="_blank" style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:12px 16px;text-decoration:none;color:var(--txt);font-size:13px;font-weight:500;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.07)\'" onmouseout="this.style.boxShadow=\'none\'">'
+        +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2" stroke-linecap="round" style="flex-shrink:0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+        +item.nome
+        +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7A99" stroke-width="2" stroke-linecap="round" style="margin-left:auto;flex-shrink:0"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+        +'</a>';
+    }).join('');
+    return '<div class="secao"><div class="linha-titulo">'+cat.categoria+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">'+itensHTML+'</div></div>';
   }).join('');
 }
 
