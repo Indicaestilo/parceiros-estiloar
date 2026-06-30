@@ -1251,6 +1251,35 @@ const SUPABASE_KEY='sb_publishable_JyAcHfLwB0HHV95hz0bALg_0z9fJKg0';
 // Initialize Supabase client
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ── SUPABASE STORAGE: helper genérico de upload ──────────────────────────────
+// Faz upload de um File para o bucket indicado e retorna a URL pública.
+// Substitui o antigo método de base64 (que inflava o banco e o egress).
+async function uploadParaStorage(bucket, file){
+  try{
+    const ext=(file.name.split('.').pop()||'bin').toLowerCase();
+    const nomeArquivo=Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+    const {data,error}=await sbClient.storage.from(bucket).upload(nomeArquivo,file,{cacheControl:'3600',upsert:false});
+    if(error){console.error('Erro no upload para '+bucket+':',error);return null;}
+    const {data:urlData}=sbClient.storage.from(bucket).getPublicUrl(nomeArquivo);
+    return {url:urlData.publicUrl,path:nomeArquivo};
+  }catch(e){
+    console.error('Erro inesperado no upload:',e);
+    return null;
+  }
+}
+// Remove um arquivo do Storage a partir da URL pública salva no banco.
+async function removerDoStorage(bucket,url){
+  try{
+    if(!url)return;
+    const partes=url.split('/'+bucket+'/');
+    if(partes.length<2)return;
+    const path=partes[1];
+    await sbClient.storage.from(bucket).remove([path]);
+  }catch(e){
+    console.error('Erro ao remover do storage:',e);
+  }
+}
+
 // Legacy REST API for non-auth operations
 async function sbFetch(path, method, body){
   method=method||'GET';
@@ -2387,57 +2416,52 @@ function salvarEditVid(){
 function addFotosMod(mi,input){
   if(!mods[mi].fotos)mods[mi].fotos=[];
   const files=[...input.files];
-  let loaded=0;
-  files.forEach(function(f){
-    const reader=new FileReader();
-    reader.onload=function(e){
-      mods[mi].fotos.push(e.target.result);
-      loaded++;
-      if(loaded===files.length){
-        renderModsAdm();
-        t('✅ '+files.length+' foto(s) adicionada(s)!');
-        // Save fotos to Supabase
-        const modId=mods[mi].id;
-        if(modId){
-          // Save each new foto
-          mods[mi].fotos.forEach(function(fotoB64,fi){
-            sbFetch('fotos_modulo','POST',{modulo_id:modId,foto_base64:fotoB64,ordem:fi});
-          });
-        }
+  const modId=mods[mi].id;
+  t('Enviando '+files.length+' foto(s)...');
+  Promise.all(files.map(function(f){return uploadParaStorage('fotos-modulos',f);})).then(function(resultados){
+    let okCount=0;
+    resultados.forEach(function(r){
+      if(r&&r.url){
+        mods[mi].fotos.push(r.url);
+        okCount++;
+        if(modId)sbFetch('fotos_modulo','POST',{modulo_id:modId,foto_base64:r.url,ordem:mods[mi].fotos.length-1});
       }
-    };
-    reader.readAsDataURL(f);
+    });
+    renderModsAdm();
+    if(okCount>0)t('✅ '+okCount+' foto(s) adicionada(s)!');
+    if(okCount<files.length)t('⚠️ Algumas fotos falharam ao enviar.');
   });
 }
 function remFotoMod(mi,fi){
   // Get foto ID from DB - need to reload
   const modId=mods[mi].id;
+  const urlRemovida=mods[mi].fotos[fi];
   mods[mi].fotos.splice(fi,1);
   renderModsAdm();t('Foto removida.');
+  if(urlRemovida)removerDoStorage('fotos-modulos',urlRemovida);
   // Reload fotos from DB and resync
   if(modId){
     sbFetch('fotos_modulo?modulo_id=eq.'+modId,'DELETE');
     // Re-insert remaining fotos
-    mods[mi].fotos.forEach(function(fotoB64,idx){
-      sbFetch('fotos_modulo','POST',{modulo_id:modId,foto_base64:fotoB64,ordem:idx});
+    mods[mi].fotos.forEach(function(fotoUrl,idx){
+      sbFetch('fotos_modulo','POST',{modulo_id:modId,foto_base64:fotoUrl,ordem:idx});
     });
   }
 }
 
 function addPdfMod(mi,input){
   const f=input.files[0];if(!f)return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const b64=e.target.result;
-    mods[mi].pdf={nm:f.name,url:b64};
+  const modId=mods[mi].id;
+  t('Enviando PDF...');
+  uploadParaStorage('pdfs-modulos',f).then(function(r){
+    if(!r||!r.url){t('❌ Erro ao enviar o PDF.');return;}
+    mods[mi].pdf={nm:f.name,url:r.url};
     renderModsAdm();t('✅ Manual "'+f.name+'" adicionado!');
     // Save to Supabase
-    const modId=mods[mi].id;
     if(modId){
-      sbFetch('modulos?id=eq.'+modId,'PATCH',{pdf_nome:f.name,pdf_url:b64});
+      sbFetch('modulos?id=eq.'+modId,'PATCH',{pdf_nome:f.name,pdf_url:r.url});
     }
-  };
-  reader.readAsDataURL(f);
+  });
 }
 function remPdfMod(mi){
   mods[mi].pdf={nm:'',url:''};
@@ -2460,21 +2484,22 @@ function previewFotos(input){
   const prev=document.getElementById('nk-fotos-preview');
   prev.innerHTML='';
   const files=[...input.files];
-  files.forEach((f,i)=>{
-    const reader=new FileReader();
-    reader.onload=e=>{
-      nkFotosBase64.push(e.target.result);
+  prev.innerHTML='<div style="font-size:12px;color:var(--txt2)">Enviando fotos...</div>';
+  Promise.all(files.map(function(f){return uploadParaStorage('fotos-kits',f);})).then(function(resultados){
+    prev.innerHTML='';
+    resultados.forEach(function(r,i){
+      if(!r||!r.url)return;
+      nkFotosBase64.push(r.url);
       const wrap=document.createElement('div');
       wrap.style.cssText='position:relative;width:80px;height:60px;border-radius:6px;overflow:hidden;border:1px solid var(--borda);background:var(--cinza)';
       const img=document.createElement('img');
-      img.src=e.target.result;
+      img.src=r.url;
       img.style.cssText='width:100%;height:100%;object-fit:contain;padding:2px';
       const lbl=document.createElement('div');
       lbl.textContent=i+1;
       lbl.style.cssText='position:absolute;bottom:2px;right:4px;font-size:10px;font-weight:700;color:var(--txt2)';
       wrap.appendChild(img);wrap.appendChild(lbl);prev.appendChild(wrap);
-    };
-    reader.readAsDataURL(f);
+    });
   });
 }
 
@@ -2544,18 +2569,19 @@ function remPeca(ki,pi){
 let ekFotosNovas=[];
 function previewFotosEdit(input){
   ekFotosNovas=[];
-  const prev=document.getElementById('ek-fotos-preview');prev.innerHTML='';
-  [...input.files].forEach((f,i)=>{
-    const reader=new FileReader();
-    reader.onload=e=>{
-      ekFotosNovas.push(e.target.result);
+  const prev=document.getElementById('ek-fotos-preview');prev.innerHTML='<div style="font-size:12px;color:var(--txt2)">Enviando fotos...</div>';
+  const files=[...input.files];
+  Promise.all(files.map(function(f){return uploadParaStorage('fotos-kits',f);})).then(function(resultados){
+    prev.innerHTML='';
+    resultados.forEach(function(r){
+      if(!r||!r.url)return;
+      ekFotosNovas.push(r.url);
       const wrap=document.createElement('div');
       wrap.style.cssText='position:relative;width:70px;height:52px;border-radius:6px;overflow:hidden;border:1px solid var(--borda);background:var(--cinza)';
-      const img=document.createElement('img');img.src=e.target.result;
+      const img=document.createElement('img');img.src=r.url;
       img.style.cssText='width:100%;height:100%;object-fit:contain;padding:2px';
       wrap.appendChild(img);prev.appendChild(wrap);
-    };
-    reader.readAsDataURL(f);
+    });
   });
 }
 
@@ -2655,13 +2681,13 @@ let kviFotoBase64='';
 
 function previewKviFoto(input){
   const f=input.files[0];if(!f)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    kviFotoBase64=e.target.result;
-    document.getElementById('kvi-foto-img').src=e.target.result;
-    document.getElementById('kvi-foto-preview').style.display='block';
-  };
-  reader.readAsDataURL(f);
+  document.getElementById('kvi-foto-preview').style.display='block';
+  document.getElementById('kvi-foto-img').src='';
+  uploadParaStorage('fotos-kit-visual',f).then(function(r){
+    if(!r||!r.url){t('❌ Erro ao enviar a foto.');return;}
+    kviFotoBase64=r.url;
+    document.getElementById('kvi-foto-img').src=r.url;
+  });
 }
 
 function renderKvView(){
@@ -3101,13 +3127,13 @@ function salvarEditServico(){
 function previewDocFile(input){
   const f=input.files[0];if(!f)return;
   docFileType=f.name.split('.').pop().toLowerCase();
-  const reader=new FileReader();
-  reader.onload=function(e){
-    docFileBase64=e.target.result;
+  document.getElementById('doc-file-name').textContent='Enviando "'+f.name+'"...';
+  document.getElementById('doc-file-preview').style.display='block';
+  uploadParaStorage('documentos',f).then(function(r){
+    if(!r||!r.url){t('❌ Erro ao enviar o arquivo.');document.getElementById('doc-file-preview').style.display='none';return;}
+    docFileBase64=r.url;
     document.getElementById('doc-file-name').textContent=f.name;
-    document.getElementById('doc-file-preview').style.display='block';
-  };
-  reader.readAsDataURL(f);
+  });
 }
 
 function getDocIcon(ext){
@@ -3287,15 +3313,14 @@ function playVideoSecao(secao, videoId, el){
 
 function uploadThumbSecao(secao, input){
   const f=input.files[0];if(!f)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    vpThumbFiles[secao]=e.target.result;
+  const prev=document.getElementById('thumb-prev-'+secao);
+  uploadParaStorage('thumbnails',f).then(function(r){
+    if(!r||!r.url){t('❌ Erro ao enviar a thumbnail.');return;}
+    vpThumbFiles[secao]=r.url;
     // Show preview
-    const prev=document.getElementById('thumb-prev-'+secao);
-    if(prev){prev.src=e.target.result;prev.style.display='block';}
+    if(prev){prev.src=r.url;prev.style.display='block';}
     t('✅ Thumbnail carregada! Clique em "Salvar e aplicar" para confirmar.');
-  };
-  reader.readAsDataURL(f);
+  });
 }
 
 function salvarVideoCurso2(){
