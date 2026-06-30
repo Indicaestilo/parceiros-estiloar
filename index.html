@@ -1824,7 +1824,7 @@ const vpState={};
 
 function aba(id,el){
   // Save current iframe srcs before destroying
-  ['sobre','beneficios','pecas','servicos'].forEach(function(sec){
+  ['sobre','beneficios','pecas','servicos','treinamentos'].forEach(function(sec){
     const cont=document.getElementById('vp-cont-'+sec);
     if(cont){
       const iframe=cont.querySelector('iframe');
@@ -1854,7 +1854,7 @@ function aba(id,el){
   if(id==='marketing')renderMarketingView();
 
   // Restore video for the tab being opened (without autoplay)
-  if(['sobre','beneficios','pecas','servicos'].includes(id)&&vpState[id]){
+  if(['sobre','beneficios','pecas','servicos','treinamentos'].includes(id)&&vpState[id]){
     const cont=document.getElementById('vp-cont-'+id);
     if(cont){
       const iframe=document.createElement('iframe');
