@@ -1446,6 +1446,9 @@ async function dbSalvarModulo(nm,cor){
 async function dbAtualizarModulo(id,nm,cor){
   return sbFetch('modulos?id=eq.'+id,'PATCH',{nome:nm,cor:cor});
 }
+async function dbSalvarFotosDrive(id,url){
+  return sbFetch('modulos?id=eq.'+id,'PATCH',{fotos_drive_url:url});
+}
 async function dbRemoverModulo(id){
   return sbFetch('modulos?id=eq.'+id,'DELETE');
 }
@@ -1644,7 +1647,7 @@ async function inicializarPortal(){
     }
 
     // Carregar módulos do banco (com capítulos e vídeos)
-    const dbMods=await sbFetch('modulos?select=*,fotos_modulo(*),capitulos(*,videos(*))&order=ordem.asc');
+    const dbMods=await sbFetch('modulos?select=*,capitulos(*,videos(*))&order=ordem.asc');
     if(dbMods&&dbMods.length>0){
       mods=dbMods.map(function(m){
         const caps=(m.capitulos||[]).sort(function(a,b){return a.ordem-b.ordem;}).map(function(c){
@@ -1664,7 +1667,7 @@ async function inicializarPortal(){
         return {
           id:m.id, nm:m.nome, cor:m.cor||'t1',
           pdf:{nm:m.pdf_nome||'',url:m.pdf_url||''},
-          fotos:(m.fotos_modulo||[]).map(function(f){return f.foto_base64;}).filter(Boolean),
+          fotos_drive:m.fotos_drive_url||'',
           caps:caps,
           vids:vidsLegacy
         };
@@ -2028,18 +2031,14 @@ function abrirMod(mi){
   document.getElementById('pl-mod-nm').textContent=m.nm;
   document.getElementById('vl-head').textContent=m.nm;
 
-  // fotos do produto - THUMBNAIL GRID
+  // fotos do produto - link para o Drive
   let fotoArea=document.getElementById('mod-fotos-area');
   if(!fotoArea){
     fotoArea=document.createElement('div');fotoArea.id='mod-fotos-area';
     area.insertBefore(fotoArea,area.firstChild);
   }
-  if(m.fotos&&m.fotos.length>0){
-    const thumbs=m.fotos.map(function(f,i){
-      return '<div class="foto-thumb" onclick="abrirLightbox(modFotosAtual,'+i+')"><img src="'+f+'" alt="'+m.nm+'"></div>';
-    }).join('');
-    fotoArea.innerHTML='<div class="secao"><div class="stit">Fotos do produto</div><div class="fotos-thumb-grid">'+thumbs+'</div></div>';
-    window.modFotosAtual=m.fotos;
+  if(m.fotos_drive){
+    fotoArea.innerHTML='<div class="secao"><div class="stit">Fotos do produto</div><a href="'+m.fotos_drive+'" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Ver fotos do produto</a></div>';
   }else{fotoArea.innerHTML='';}
 
   // pdf - with download button
@@ -2234,7 +2233,7 @@ function renderModsAdm(){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7A99" stroke-width="2" stroke-linecap="round" style="transform:rotate(${modAberto?'90':'0'}deg);transition:transform .15s;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
         <span class="mac-cor" style="background:${corMap[m.cor]}"></span>
         <span class="mac-nm" id="mod-nm-${mi}">${m.nm}</span>
-        <span class="mac-qt">${(m.caps||[]).length} capítulo(s) · ${m.fotos?m.fotos.length:0} foto(s)</span>
+        <span class="mac-qt">${(m.caps||[]).length} capítulo(s)${m.fotos_drive?' · 📁 Drive vinculado':''}</span>
         <div class="mac-acs" onclick="event.stopPropagation()">
           <button class="ba-btn" onclick="editarMod(${mi})" title="Editar módulo"><svg viewBox="0 0 24 24" fill="none" stroke="#6B7A99" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           <button class="ba-btn d" onclick="remMod(${mi})" title="Excluir módulo"><svg viewBox="0 0 24 24" fill="none" stroke="#6B7A99" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
@@ -2242,13 +2241,13 @@ function renderModsAdm(){
       </div>
       ${modAberto?`<div class="mab">
         <div style="padding:12px 18px;border-bottom:1px solid var(--borda)">
-          <div style="font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Fotos do produto</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">${fotosHTML}</div>
-          <label style="display:inline-flex;align-items:center;gap:6px;background:var(--cinza);border:1.5px dashed var(--borda);border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12px;color:var(--txt2)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Adicionar fotos
-            <input type="file" accept="image/png,image/jpeg" multiple style="display:none" onchange="addFotosMod(${mi},this)">
-          </label>
+          <div style="font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Fotos do produto — Link do Google Drive</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <input id="drive-fotos-${mi}" type="url" placeholder="https://drive.google.com/drive/folders/..." value="${m.fotos_drive||''}" style="flex:1;padding:9px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px;color:var(--txt);background:var(--fundo);outline:none">
+            <button class="btn sm" onclick="salvarFotosDrive(${mi})">Salvar</button>
+            ${m.fotos_drive?`<a href="${m.fotos_drive}" target="_blank" class="btn sm" style="background:var(--cinza);color:var(--txt);text-decoration:none">Abrir ↗</a>`:''}
+          </div>
+          <div style="font-size:11px;color:var(--txt2)">Cole o link de compartilhamento da pasta do Drive onde estão as fotos deste módulo.</div>
         </div>
         <div style="padding:12px 18px;border-bottom:1px solid var(--borda)">
           <div style="font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Manual / PDF</div>
@@ -2720,6 +2719,16 @@ function salvarEditVid(){
   const vidId=mods[mi].vids[vi].id;
   if(vidId)dbAtualizarVideo(vidId,tt,l);
   renderModsAdm();fecharMo();t('✅ Vídeo atualizado!');
+}
+
+function salvarFotosDrive(mi){
+  const url=document.getElementById('drive-fotos-'+mi).value.trim();
+  const modId=mods[mi].id;
+  mods[mi].fotos_drive=url;
+  if(modId)dbSalvarFotosDrive(modId,url).then(function(){
+    t('✅ Link do Drive salvo!');
+    renderModsAdm();
+  });
 }
 
 function addFotosMod(mi,input){
