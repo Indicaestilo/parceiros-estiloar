@@ -2045,7 +2045,7 @@ function abrirMod(mi){
   let pdfArea=document.getElementById('mod-pdf-area');
   if(!pdfArea){pdfArea=document.createElement('div');pdfArea.id='mod-pdf-area';area.insertBefore(pdfArea,area.firstChild);}
   if(m.pdf&&m.pdf.nm){
-    pdfArea.innerHTML='<div class="secao"><div class="stit">Manual do produto</div><div style="display:flex;gap:10px;flex-wrap:wrap"><a href="'+m.pdf.url+'" download="'+m.pdf.nm+'" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Baixar manual</a></div></div>';
+    pdfArea.innerHTML='<div class="secao"><div class="stit">Manual do produto</div><div style="display:flex;gap:10px;flex-wrap:wrap"><a href="'+m.pdf.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Abrir manual</a></div></div>';
   }else{pdfArea.innerHTML='';}
 
   const vli=document.getElementById('vl-items');vli.innerHTML='';
