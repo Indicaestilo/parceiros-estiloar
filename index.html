@@ -1449,6 +1449,9 @@ async function dbAtualizarModulo(id,nm,cor){
 async function dbSalvarFotosDrive(id,url){
   return sbFetch('modulos?id=eq.'+id,'PATCH',{fotos_drive_url:url});
 }
+async function dbSalvarPdfDrive(id,url){
+  return sbFetch('modulos?id=eq.'+id,'PATCH',{pdf_drive_url:url});
+}
 async function dbRemoverModulo(id){
   return sbFetch('modulos?id=eq.'+id,'DELETE');
 }
@@ -1667,6 +1670,7 @@ async function inicializarPortal(){
         return {
           id:m.id, nm:m.nome, cor:m.cor||'t1',
           pdf:{nm:m.pdf_nome||'',url:m.pdf_url||''},
+          pdf_drive:m.pdf_drive_url||'',
           fotos_drive:m.fotos_drive_url||'',
           caps:caps,
           vids:vidsLegacy
@@ -2044,10 +2048,13 @@ function abrirMod(mi){
   // pdf - with download button
   let pdfArea=document.getElementById('mod-pdf-area');
   if(!pdfArea){pdfArea=document.createElement('div');pdfArea.id='mod-pdf-area';area.insertBefore(pdfArea,area.firstChild);}
-  if(m.pdf&&m.pdf.nm){
-    pdfArea.innerHTML='<div class="secao"><div class="stit">Manual do produto</div><div style="display:flex;gap:10px;flex-wrap:wrap"><a href="'+m.pdf.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Abrir manual</a></div></div>';
-  }else{pdfArea.innerHTML='';}
-
+  if(m.pdf_drive){
+    pdfArea.innerHTML='<div class="secao"><div class="stit">Manual do produto</div><a href="'+m.pdf_drive+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Acessar manual no Drive</a></div>';
+  }else if(m.pdf&&m.pdf.nm){
+    pdfArea.innerHTML='<div class="secao"><div class="stit">Manual do produto</div><a href="'+m.pdf.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:var(--azul);border-radius:10px;padding:11px 16px;text-decoration:none;color:#fff;font-size:13px;font-weight:500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Acessar manual</a></div>';
+  }else{
+    pdfArea.innerHTML='';
+  }
   const vli=document.getElementById('vl-items');vli.innerHTML='';
   const caps=m.caps||[];
   if(caps.length>0){
@@ -2250,13 +2257,13 @@ function renderModsAdm(){
           <div style="font-size:11px;color:var(--txt2)">Cole o link de compartilhamento da pasta do Drive onde estão as fotos deste módulo.</div>
         </div>
         <div style="padding:12px 18px;border-bottom:1px solid var(--borda)">
-          <div style="font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Manual / PDF</div>
-          <div style="margin-bottom:10px">${pdfHTML}</div>
-          <label style="display:inline-flex;align-items:center;gap:6px;background:var(--cinza);border:1.5px dashed var(--borda);border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12px;color:var(--txt2)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            ${m.pdf&&m.pdf.nm?'Substituir manual':'Adicionar manual PDF'}
-            <input type="file" accept="application/pdf" style="display:none" onchange="addPdfMod(${mi},this)">
-          </label>
+          <div style="font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Manual / PDF — Link do Google Drive</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <input id="drive-pdf-${mi}" type="url" placeholder="https://drive.google.com/file/d/..." value="${m.pdf_drive||''}" style="flex:1;padding:9px 12px;border:1.5px solid var(--borda);border-radius:8px;font-size:13px;color:var(--txt);background:var(--fundo);outline:none">
+            <button class="btn sm" onclick="salvarPdfDrive(${mi})">Salvar</button>
+            ${m.pdf_drive?`<a href="${m.pdf_drive}" target="_blank" class="btn sm" style="background:var(--cinza);color:var(--txt);text-decoration:none">Abrir ↗</a>`:''}
+          </div>
+          <div style="font-size:11px;color:var(--txt2)">Cole o link de compartilhamento do arquivo PDF no Drive.</div>
         </div>
         <div style="padding:12px 18px;border-bottom:1px solid var(--borda)">
           <div style="font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Capítulos e vídeos</div>
@@ -2727,6 +2734,16 @@ function salvarFotosDrive(mi){
   mods[mi].fotos_drive=url;
   if(modId)dbSalvarFotosDrive(modId,url).then(function(){
     t('✅ Link do Drive salvo!');
+    renderModsAdm();
+  });
+}
+
+function salvarPdfDrive(mi){
+  const url=document.getElementById('drive-pdf-'+mi).value.trim();
+  const modId=mods[mi].id;
+  mods[mi].pdf_drive=url;
+  if(modId)dbSalvarPdfDrive(modId,url).then(function(){
+    t('✅ Link do manual salvo!');
     renderModsAdm();
   });
 }
